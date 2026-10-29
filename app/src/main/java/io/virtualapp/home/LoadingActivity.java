@@ -218,10 +218,26 @@ public class LoadingActivity extends VActivity {
 
     private void launchActivity(Intent intent, int userId) {
         try {
-            VActivityManager.get().startActivity(intent, userId);
+            int result = VActivityManager.get().startActivity(intent, userId);
+            Log.i(TAG, "Virtual launch result for " + appModel.packageName + ": " + result);
+
+            Toast.makeText(
+                    getApplicationContext(),
+                    "Virtual launch result: " + result,
+                    Toast.LENGTH_LONG
+            ).show();
+
+            if (result < 0) {
+                Log.e(TAG, "Virtual launch rejected with result code: " + result);
+                finish();
+            }
         } catch (Throwable e) {
             VLog.e(TAG, "start activity failed:", e);
-            Toast.makeText(getApplicationContext(), getResources().getString(R.string.start_app_failed, appModel.name), Toast.LENGTH_SHORT).show();
+            Toast.makeText(
+                    getApplicationContext(),
+                    getResources().getString(R.string.start_app_failed, appModel.name),
+                    Toast.LENGTH_SHORT
+            ).show();
             finish();
         }
     }
