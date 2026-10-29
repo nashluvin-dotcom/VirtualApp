@@ -76,6 +76,7 @@ public class LoadingActivity extends VActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Toast.makeText(this, "DIAG 1: LoadingActivity started", Toast.LENGTH_LONG).show();
         start = SystemClock.elapsedRealtime();
 
         setContentView(R.layout.activity_loading);
@@ -83,6 +84,8 @@ public class LoadingActivity extends VActivity {
         int userId = getIntent().getIntExtra(Constants.PASS_KEY_USER, -1);
         String pkg = getIntent().getStringExtra(Constants.PASS_PKG_NAME_ARGUMENT);
         appModel = PackageAppDataStorage.get().acquire(pkg);
+        Toast.makeText(this, "DIAG 2: package=" + pkg + ", user=" + userId,
+                Toast.LENGTH_LONG).show();
         if (appModel == null) {
             Toast.makeText(getApplicationContext(), "Open App:" + pkg + " failed.", Toast.LENGTH_SHORT).show();
             finish();
@@ -99,6 +102,7 @@ public class LoadingActivity extends VActivity {
             return;
         }
         VirtualCore.get().setUiCallback(intent, mUiCallback);
+        Toast.makeText(this, "DIAG 3: launch intent received", Toast.LENGTH_LONG).show();
 
         try {
             // 如果已经在运行了，那么直接拉起，不做任何检测。
@@ -124,10 +128,14 @@ public class LoadingActivity extends VActivity {
             ignored.printStackTrace();
         }
 
+        Toast.makeText(this, "DIAG 4: starting permission/launch check",
+                Toast.LENGTH_LONG).show();
         checkAndLaunch(intent, userId);
     }
 
     private void checkAndLaunch(Intent intent, int userId) {
+        Toast.makeText(this, "DIAG 5: checking virtual package",
+                Toast.LENGTH_LONG).show();
         final int RUNTIME_PERMISSION_API_LEVEL = android.os.Build.VERSION_CODES.M;
 
         if (android.os.Build.VERSION.SDK_INT < RUNTIME_PERMISSION_API_LEVEL) {
@@ -217,6 +225,8 @@ public class LoadingActivity extends VActivity {
     }
 
     private void launchActivity(Intent intent, int userId) {
+        Toast.makeText(this, "DIAG 6: calling virtual startActivity",
+                Toast.LENGTH_LONG).show();
         try {
             int result = VActivityManager.get().startActivity(intent, userId);
             Log.i(TAG, "Virtual launch result for " + appModel.packageName + ": " + result);
