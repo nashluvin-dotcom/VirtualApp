@@ -2,6 +2,8 @@ package io.virtualapp.home;
 
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -23,6 +25,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -40,6 +44,7 @@ public class NewHomeActivity extends AppCompatActivity {
 
     private static final String SHOW_DOZE_ALERT_KEY = "SHOW_DOZE_ALERT_KEY";
     private static final String TAG = NewHomeActivity.class.getSimpleName();
+    private static final int MENU_VIEW_LAUNCH_DIAGNOSTICS = 10001;
     private Handler mUiHandler;
 
     private RecyclerView mRecyclerView;
@@ -249,13 +254,18 @@ public class NewHomeActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        menu.add(Menu.NONE, MENU_VIEW_LAUNCH_DIAGNOSTICS, Menu.FIRST + 10,
+                "View Launch Diagnostics").setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.main_setting) {
+        if (id == MENU_VIEW_LAUNCH_DIAGNOSTICS) {
+            showLaunchDiagnostics();
+            return true;
+        } else if (id == R.id.main_setting) {
             startActivity(new Intent(this, SettingsActivity.class));
             return true;
         } else if (id == R.id.main_reboot) {
@@ -271,6 +281,43 @@ public class NewHomeActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showLaunchDiagnostics() {
+        String logText;
+        try (InputStream input = openFileInput("virtual_launch_diagnostic.txt");
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+            }
+            logText = output.toString("UTF-8");
+            if (logText.length() > 12000) {
+                logText = logText.substring(logText.length() - 12000);
+            }
+        } catch (java.io.FileNotFoundException e) {
+            logText = "No launch diagnostic log exists yet. Try opening Facebook or Instagram once, then check here again.";
+        } catch (Throwable e) {
+            logText = "Could not read launch log: " + e;
+        }
+
+        final String displayedLog = logText;
+        new AlertDialog.Builder(this)
+                .setTitle("Virtual Launch Diagnostics")
+                .setMessage(displayedLog)
+                .setPositiveButton("Copy Log", (dialog, which) -> {
+                    ClipboardManager clipboard =
+                            (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    if (clipboard != null) {
+                        clipboard.setPrimaryClip(ClipData.newPlainText(
+                                "Virtual launch diagnostics", displayedLog));
+                        Toast.makeText(this, "Diagnostic log copied",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Close", null)
+                .show();
     }
 
     @Override
