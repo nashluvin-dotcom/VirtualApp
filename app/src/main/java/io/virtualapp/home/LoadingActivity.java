@@ -26,6 +26,8 @@ import com.lody.virtual.client.ipc.VPackageManager;
 import com.lody.virtual.helper.utils.VLog;
 import com.lody.virtual.server.pm.parser.VPackage;
 
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -52,6 +54,16 @@ public class LoadingActivity extends VActivity {
 
     private static final int REQUEST_PERMISSION_CODE = 100;
 
+    private void writeLaunchDiagnostic(String message) {
+        try (FileOutputStream out = openFileOutput("virtual_launch_diagnostic.txt",
+                Context.MODE_APPEND)) {
+            String line = System.currentTimeMillis() + " | " + message + "\n";
+            out.write(line.getBytes(StandardCharsets.UTF_8));
+        } catch (Throwable e) {
+            Log.e(TAG, "Could not write launch diagnostic", e);
+        }
+    }
+
     private Intent intentToLaunch;
     private int userToLaunch;
 
@@ -76,6 +88,7 @@ public class LoadingActivity extends VActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        writeLaunchDiagnostic("onCreate started");
         Toast.makeText(this, "DIAG 1: LoadingActivity started", Toast.LENGTH_LONG).show();
         start = SystemClock.elapsedRealtime();
 
@@ -84,6 +97,8 @@ public class LoadingActivity extends VActivity {
         int userId = getIntent().getIntExtra(Constants.PASS_KEY_USER, -1);
         String pkg = getIntent().getStringExtra(Constants.PASS_PKG_NAME_ARGUMENT);
         appModel = PackageAppDataStorage.get().acquire(pkg);
+        writeLaunchDiagnostic("Package=" + pkg + ", user=" + userId
+                + ", appModel=" + (appModel != null));
         Toast.makeText(this, "DIAG 2: package=" + pkg + ", user=" + userId,
                 Toast.LENGTH_LONG).show();
         if (appModel == null) {
@@ -130,10 +145,13 @@ public class LoadingActivity extends VActivity {
 
         Toast.makeText(this, "DIAG 4: starting permission/launch check",
                 Toast.LENGTH_LONG).show();
+        writeLaunchDiagnostic("Starting permission and launch check");
         checkAndLaunch(intent, userId);
     }
 
     private void checkAndLaunch(Intent intent, int userId) {
+        writeLaunchDiagnostic("checkAndLaunch entered, SDK="
+                + android.os.Build.VERSION.SDK_INT);
         Toast.makeText(this, "DIAG 5: checking virtual package",
                 Toast.LENGTH_LONG).show();
         final int RUNTIME_PERMISSION_API_LEVEL = android.os.Build.VERSION_CODES.M;
@@ -225,10 +243,12 @@ public class LoadingActivity extends VActivity {
     }
 
     private void launchActivity(Intent intent, int userId) {
+        writeLaunchDiagnostic("launchActivity entered");
         Toast.makeText(this, "DIAG 6: calling virtual startActivity",
                 Toast.LENGTH_LONG).show();
         try {
             int result = VActivityManager.get().startActivity(intent, userId);
+            writeLaunchDiagnostic("startActivity returned: " + result);
             Log.i(TAG, "Virtual launch result for " + appModel.packageName + ": " + result);
 
             Toast.makeText(
@@ -242,6 +262,7 @@ public class LoadingActivity extends VActivity {
                 finish();
             }
         } catch (Throwable e) {
+            writeLaunchDiagnostic("startActivity exception: " + Log.getStackTraceString(e));
             VLog.e(TAG, "start activity failed:", e);
             Toast.makeText(
                     getApplicationContext(),
@@ -305,11 +326,13 @@ public class LoadingActivity extends VActivity {
 
         @Override
         public void onAppOpened(String packageName, int userId) throws RemoteException {
+            writeLaunchDiagnostic("onAppOpened: " + packageName);
             finish();
         }
 
         @Override
         public void onOpenFailed(String packageName, int userId) throws RemoteException {
+            writeLaunchDiagnostic("onOpenFailed: " + packageName);
             VUiKit.defer().when(() -> {
             }).done((v) -> {
                 if (!isFinishing()) {
