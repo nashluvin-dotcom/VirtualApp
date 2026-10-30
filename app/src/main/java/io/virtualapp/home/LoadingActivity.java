@@ -2,6 +2,8 @@ package io.virtualapp.home;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.ClipboardManager;
+import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
@@ -27,6 +29,8 @@ import com.lody.virtual.helper.utils.VLog;
 import com.lody.virtual.server.pm.parser.VPackage;
 
 import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
@@ -259,7 +263,8 @@ public class LoadingActivity extends VActivity {
 
             if (result < 0) {
                 Log.e(TAG, "Virtual launch rejected with result code: " + result);
-                finish();
+                writeLaunchDiagnostic("Showing diagnostic dialog for rejected launch: " + result);
+                runOnUiThread(() -> showLaunchDiagnosticDialog(appModel.packageName));
             }
         } catch (Throwable e) {
             writeLaunchDiagnostic("startActivity exception: " + Log.getStackTraceString(e));
@@ -269,7 +274,7 @@ public class LoadingActivity extends VActivity {
                     getResources().getString(R.string.start_app_failed, appModel.name),
                     Toast.LENGTH_SHORT
             ).show();
-            finish();
+            runOnUiThread(() -> showLaunchDiagnosticDialog(appModel.packageName));
         }
     }
 
@@ -333,17 +338,54 @@ public class LoadingActivity extends VActivity {
         @Override
         public void onOpenFailed(String packageName, int userId) throws RemoteException {
             writeLaunchDiagnostic("onOpenFailed: " + packageName);
-            VUiKit.defer().when(() -> {
-            }).done((v) -> {
-                if (!isFinishing()) {
-                    Toast.makeText(getApplicationContext(), getResources().getString(R.string.start_app_failed, packageName),
-                            Toast.LENGTH_SHORT).show();
-                }
-            });
-
-            finish();
+            runOnUiThread(() -> showLaunchDiagnosticDialog(packageName));
         }
     };
+
+
+    private void showLaunchDiagnosticDialog(String packageName) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+
+        StringBuilder log = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(
+                        openFileInput("virtual_launch_diagnostic.txt"),
+                        StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                log.append(line).append("\n");
+            }
+        } catch (Exception e) {
+            log.append("Could not read diagnostic log: ")
+                    .append(Log.getStackTraceString(e));
+        }
+
+        String diagnosticText = log.toString();
+        if (diagnosticText.length() > 12000) {
+            diagnosticText = diagnosticText.substring(
+                    diagnosticText.length() - 12000);
+        }
+
+        final String textToCopy = diagnosticText;
+        new AlertDialog.Builder(this, R.style.Theme_AppCompat_DayNight_Dialog_Alert)
+                .setTitle("Launch diagnostic: " + packageName)
+                .setMessage(textToCopy.isEmpty() ? "No diagnostic entries found." : textToCopy)
+                .setPositiveButton("Copy Log", (dialog, which) -> {
+                    ClipboardManager clipboard = (ClipboardManager)
+                            getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (clipboard != null) {
+                        clipboard.setPrimaryClip(
+                                ClipData.newPlainText("VirtualApp launch diagnostic", textToCopy));
+                        Toast.makeText(this, "Diagnostic log copied", Toast.LENGTH_LONG).show();
+                    }
+                    finish();
+                })
+                .setNegativeButton("Close", (dialog, which) -> finish())
+                .setOnCancelListener(dialog -> finish())
+                .show();
+    }
 
     @Override
     protected void onResume() {
