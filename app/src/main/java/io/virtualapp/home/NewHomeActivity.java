@@ -44,7 +44,6 @@ public class NewHomeActivity extends AppCompatActivity {
 
     private static final String SHOW_DOZE_ALERT_KEY = "SHOW_DOZE_ALERT_KEY";
     private static final String TAG = NewHomeActivity.class.getSimpleName();
-    private static final int MENU_VIEW_LAUNCH_DIAGNOSTICS = 10001;
     private Handler mUiHandler;
 
     private RecyclerView mRecyclerView;
@@ -254,15 +253,13 @@ public class NewHomeActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
-        menu.add(Menu.NONE, MENU_VIEW_LAUNCH_DIAGNOSTICS, Menu.FIRST + 10,
-                "View Launch Diagnostics").setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == MENU_VIEW_LAUNCH_DIAGNOSTICS) {
+        if (id == R.id.main_launch_diagnostics) {
             showLaunchDiagnostics();
             return true;
         } else if (id == R.id.main_setting) {
