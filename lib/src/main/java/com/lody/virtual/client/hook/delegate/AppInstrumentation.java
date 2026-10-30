@@ -107,6 +107,8 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
         try {
             super.callActivityOnCreate(activity, icicle);
         } catch (Throwable e) {
+            VClientImpl.get().writeStartupDiagnostic(
+                    "Activity onCreate failed: " + activity.getClass().getName(), e);
             VLog.e(TAG, "activity crashed when call onCreate, clearing", e);
             // 1. tell ui that we launched(failed)
             Intent intent = activity.getIntent();
@@ -124,6 +126,8 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
         try {
             return super.newActivity(clazz, context, token, application, intent, info, title, parent, id, lastNonConfigurationInstance);
         } catch (Throwable e) {
+            VClientImpl.get().writeStartupDiagnostic(
+                    "Activity instantiation failed: " + intent, e);
             VLog.e(TAG, "activity crashed when call newActivity, clearing", e);
             // 1. tell ui that we launched(failed)
             callUiCallback(intent, false);
@@ -137,6 +141,8 @@ public final class AppInstrumentation extends InstrumentationDelegate implements
         try {
             return super.newActivity(cl, className, intent);
         } catch (Throwable e) {
+            VClientImpl.get().writeStartupDiagnostic(
+                    "Activity instantiation failed: " + intent, e);
             VLog.e(TAG, "activity crashed when call newActivity, clearing", e);
             // 1. tell ui that we launched(failed)
             callUiCallback(intent, false);

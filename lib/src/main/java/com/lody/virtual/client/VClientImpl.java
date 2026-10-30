@@ -54,6 +54,10 @@ import com.lody.virtual.remote.VDeviceInfo;
 import com.lody.virtual.server.interfaces.IUiCallback;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -104,6 +108,26 @@ public final class VClientImpl extends IVClient.Stub {
     private Application mInitialApplication;
     private CrashHandler crashHandler;
     private IUiCallback mUiCallback;
+
+    public void writeStartupDiagnostic(String stage, Throwable error) {
+        try {
+            Context hostContext = VirtualCore.get().getContext();
+            if (hostContext == null) return;
+
+            StringWriter trace = new StringWriter();
+            error.printStackTrace(new PrintWriter(trace));
+
+            String message = System.currentTimeMillis() + " | "
+                    + stage + "\n" + trace + "\n";
+
+            try (FileOutputStream out = hostContext.openFileOutput(
+                    "virtual_launch_diagnostic.txt", Context.MODE_APPEND)) {
+                out.write(message.getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (Throwable loggingError) {
+            VLog.e(TAG, loggingError);
+        }
+    }
 
     public static VClientImpl get() {
         return gClient;
@@ -466,6 +490,7 @@ public final class VClientImpl extends IVClient.Stub {
                 mInitialApplication = createdApp;
             }
         } catch (Exception e) {
+            writeStartupDiagnostic("Application startup failed: " + packageName, e);
             if (!mInstrumentation.onException(mInitialApplication, e)) {
                 // 1. tell ui that do not need wait use now.
                 if (mUiCallback != null) {
