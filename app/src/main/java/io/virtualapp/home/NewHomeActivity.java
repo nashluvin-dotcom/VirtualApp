@@ -90,9 +90,23 @@ public class NewHomeActivity extends AppCompatActivity {
                         appData.isLoading = true;
                         mAdapter.notifyItemChanged(position);
                         try {
-                            LoadingActivity.launch(NewHomeActivity.this, appData.packageName, 0);
+                            boolean launched = LoadingActivity.launch(
+                                    NewHomeActivity.this, appData.packageName, 0);
+
+                            android.widget.Toast.makeText(
+                                    NewHomeActivity.this,
+                                    "DIAG: Launch returned " + launched,
+                                    android.widget.Toast.LENGTH_LONG
+                            ).show();
+
                         } catch (Throwable e) {
                             e.printStackTrace();
+
+                            android.widget.Toast.makeText(
+                                    NewHomeActivity.this,
+                                    "DIAG: Launch exception: " + e.getClass().getSimpleName(),
+                                    android.widget.Toast.LENGTH_LONG
+                            ).show();
                         }
                         mUiHandler.postDelayed(() -> {
                             appData.isLoading = false;
